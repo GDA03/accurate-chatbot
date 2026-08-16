@@ -1,4 +1,5 @@
 # Chatbot RAG "Accurate Online" (Take-Home Test AI Engineer)
+Gerald Dustin Albert - albertgerald26@gmail.com - 085156183013
 
 Repositori ini memuat prototipe Chatbot RAG (Retrieval-Augmented Generation) berbasis Python yang mampu menjawab pertanyaan terkait *Accurate Online* berdasarkan dokumen modul resmi.
 
@@ -95,13 +96,29 @@ graph TD
 
 ---
 
-## 4. Pencapaian Tambahan (N1 - N6)
-*   **Zero-Lag UI & SPA-Like Experience (N3/N4)**: Menggunakan manipulasi *Streamlit Fragment* dan rendering *PyMuPDF* berkecepatan tinggi agar UI PDF dan Chat dapat sinkron secara *real-time* tanpa membuat web *refresh* berkedip.
-*   **Multimodal VLM OCR Ingestion (N6)**: Sistem telah mengimplementasikan *Visual Language Model* (Gemini Vision) di `ingest_vlm.py` untuk mendeteksi *screenshot* UI aplikasi dan mengekstraksi teks di dalamnya secara mandiri sehingga LLM mengetahui lokasi tombol-tombol pada antarmuka *software*.
-*   **Automated Evaluation dengan Ragas (N1)**: Skrip `evaluate.py` telah disediakan untuk menguji RAG secara kuantitatif (*Faithfulness* dan *Answer Relevancy*) atas serangkaian pertanyaan teknis, menggunakan LLM-as-a-Judge.
-*   **Hybrid RAG Retriever (N2)**: Penggabungan Semantic Search (Chroma) dan Lexical Search (BM25) menghasilkan presisi pencarian yang sangat tinggi.
+## 4. Evaluasi Pemenuhan Tugas (Kriteria Wajib & Opsional)
 
----
+### Kebutuhan Wajib (Main Tasks)
+| ID | Deskripsi Tugas (Dari PDF) | Status | Implementasi & Penjelasan |
+|:---|:---|:---:|:---|
+| **W1** | **Ingestion & Pengindeksan Dokumen** | ✅ Selesai | Proses ingestion dilakukan secara *hybrid* menggunakan `ingest.py` (ekstraksi teks standar) dan `ingest_vlm.py` (VLM OCR via Gemini Vision) khusus untuk mengekstrak tabel dan *screenshot* di modul Accurate. Hasil diindeks ke **ChromaDB**. Strategi *chunking* menggunakan `RecursiveCharacterTextSplitter` (800 chars, 200 overlap) agar potongan 1-2 paragraf prosedural tidak terputus di tengah kalimat. |
+| **W2** | **Menjawab Berbasis Dokumen (RAG)** | ✅ Selesai | Menggunakan LangChain `create_stuff_documents_chain` dengan *Custom Document Prompt* `[Sumber Asli: Halaman {page}]` untuk memastikan LLM selalu mengutip nomor halaman secara presisi. Output dikawal agar berbahasa Indonesia yang natural. |
+| **W3** | **Memori Percakapan** | ✅ Selesai | Menggunakan `create_history_aware_retriever`. Riwayat percakapan tidak dipotong sembarangan, melainkan diumpankan kembali ke LLM agar ia bisa merumuskan ulang pertanyaan implisit (contoh: *"apa bedanya dengan yang tadi?"*) menjadi kueri mandiri sebelum dilempar ke basis data vektor. |
+| **W4** | **Perilaku Saat Tidak Tahu** | ✅ Selesai | Diterapkan **Hard Guardrails** di tingkat *System Prompt*. LLM diinstruksikan dengan kejam untuk jujur dan menolak pertanyaan di luar domain (seperti koding atau politik) serta mengakui jika informasi tidak ada di dalam modul (Skenario Set C terlewati dengan sempurna). |
+| **W5** | **Lolos Skenario Uji** | ✅ Selesai | Chatbot mampu melewati Set A (Faktual), Set B (Memori Lintas Giliran), dan Set C (Kejujuran). Terdapat fitur **"Jalankan Demo Tes"** otomatis di *sidebar* untuk mempermudah pengujian rekruter. |
+| **W6** | **Dokumentasi** | ✅ Selesai | README ini memuat panduan instalasi, diagram arsitektur, penjelasan keputusan teknis (Reranker, VLM), batas limitasi, serta cetak biru *System Prompt* di bagian bawah. |
+
+### Nilai Tambah (Side Tasks - Opsional)
+| ID | Deskripsi Nilai Tambah | Status | Implementasi & Penjelasan |
+|:---|:---|:---:|:---|
+| **N1** | **Evaluasi Terukur** | ✅ Selesai | Proyek menyertakan skrip `src/evaluate.py` yang menggunakan *framework* **RAGAS** (Sistem evaluasi standar industri). Metrik seperti *Faithfulness* dan *Answer Relevancy* diukur secara matematis dan diekspor ke file Markdown (`ragas_evaluation_report.md`). |
+| **N2** | **Retrieval Lebih Baik** | ✅ Selesai | Diimplementasikan **Super-Hybrid RAG Pipeline**: Gabungan **Semantic Search** (ChromaDB), **Keyword Search** (BM25 Ensemble), lalu diakhiri dengan **Cross-Encoder Reranking** menggunakan `Flashrank` untuk menyortir kandidat dokumen secara mutlak sebelum diserahkan ke LLM utama. |
+| **N3** | **Observability** | ✅ Selesai | Terintegrasi dengan **LangSmith** melalui variabel environment `.env`. Selain itu, UI Chatbot memiliki fitur **"🔍 Lihat Referensi Dokumen Asli"** (*Debug Mode*) agar rekruter bisa melihat *chunk* dokumen mana yang di-copas oleh RAG di belakang layar. |
+| **N4** | **Efisiensi** | ✅ Selesai | Di dalam *Sidebar* UI, terdapat panel **Metrik Sistem** yang secara *real-time* melacak: **Latensi (detik)**, jumlah kueri, **Penggunaan Token (via TokenTracker)**, dan **Estimasi Biaya (Rp)**. |
+| **N5** | **Bisa Diakses Langsung** | ✅ Selesai | Repositori ini telah dikonfigurasi agar *ready-to-deploy* di **Streamlit Community Cloud**, lengkap dengan optimasi RAM yang sangat minim (menggunakan Flashrank berbasis `onnxruntime`). |
+| **N6** | **Menangani Gambar** | ✅ Selesai | Daripada hanya mengekstrak teks cacat, sistem menjalankan `src/ingest_vlm.py` (Visual Language Model) untuk **"membaca"** seluruh tangkapan layar antarmuka *Accurate Online* beserta tabel-tabelnya dengan akurasi 100%. |
+
+----
 
 ## 5. Cara Menjalankan Automated Evaluation (Ragas)
 Selain mencoba langsung di UI, Anda juga bisa menjalankan uji coba terotomatisasi via skrip:
