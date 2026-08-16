@@ -275,12 +275,14 @@ def show_pdf_viewer(pdf_path):
     
     pdf_view_container = st.container(height=500)
     with pdf_view_container:
-        col1, col2, col3 = st.columns([1, 2, 1])
+        col1, col2, col3, col4 = st.columns([2, 2, 1, 2])
         with col1:
             st.button("⬅️ Prev", on_click=prev_page_callback, use_container_width=True)
         with col2:
-            st.markdown(f"<div style='text-align: center; padding-top: 5px; font-weight: bold;'>Halaman {st.session_state.current_page} / {total_pages}</div>", unsafe_allow_html=True)
+            st.number_input("Halaman", min_value=1, max_value=total_pages, key="current_page", label_visibility="collapsed")
         with col3:
+            st.markdown(f"<div style='text-align: left; padding-top: 5px; font-weight: bold;'>/ {total_pages}</div>", unsafe_allow_html=True)
+        with col4:
             st.button("Next ➡️", on_click=next_page_callback, args=(total_pages,), use_container_width=True)
                 
         img_bytes = get_pdf_page_image(pdf_path, st.session_state.current_page)
