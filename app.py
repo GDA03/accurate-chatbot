@@ -42,8 +42,17 @@ st.markdown("""
         display: none !important;
     }
     /* Sembunyikan tombol + dan - di number_input */
-    [data-testid="stNumberInputStepUp"], [data-testid="stNumberInputStepDown"] {
+    [data-testid="stNumberInputStepUp"], [data-testid="stNumberInputStepDown"],
+    button[aria-label="Step up"], button[aria-label="Step down"],
+    button[title="Step up"], button[title="Step down"] {
         display: none !important;
+    }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    input[type=number] {
+        -moz-appearance: textfield;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -283,7 +292,7 @@ def show_pdf_viewer(pdf_path):
         with col1:
             st.button("⬅️ Prev", on_click=prev_page_callback, use_container_width=True)
         with col2:
-            st.number_input("Halaman", min_value=1, max_value=total_pages, key="current_page", label_visibility="collapsed")
+            st.number_input("Halaman", min_value=1, max_value=total_pages, key="current_page", step=None, label_visibility="collapsed")
         with col3:
             st.markdown(f"<div style='text-align: left; padding-top: 5px; font-weight: bold;'>/ {total_pages}</div>", unsafe_allow_html=True)
         with col4:
