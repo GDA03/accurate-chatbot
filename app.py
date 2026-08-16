@@ -41,6 +41,10 @@ st.markdown("""
     header[data-testid="stHeader"] {
         display: none !important;
     }
+    /* Sembunyikan tombol + dan - di number_input */
+    [data-testid="stNumberInputStepUp"], [data-testid="stNumberInputStepDown"] {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
