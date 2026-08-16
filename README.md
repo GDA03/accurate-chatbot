@@ -3,6 +3,8 @@ Gerald Dustin Albert - albertgerald26@gmail.com - 085156183013
 
 Repositori ini memuat prototipe Chatbot RAG (Retrieval-Augmented Generation) berbasis Python yang mampu menjawab pertanyaan terkait *Accurate Online* berdasarkan dokumen modul resmi.
 
+🌍 **Live Demo:** [https://accurate-chatbot-gerald.streamlit.app/](https://accurate-chatbot-gerald.streamlit.app/)
+
 Prototipe ini dirancang untuk meraih semua **Kebutuhan Wajib (W1-W6)** dan mengimplementasikan **Nilai Tambah (N1-N5)**.
 
 ---
