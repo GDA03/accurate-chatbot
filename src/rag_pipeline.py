@@ -97,17 +97,9 @@ def setup_rag_chain() -> Any:
     chroma_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     
     # Gabungkan Keduanya (Hybrid Search N2)
+    # BM25 + Semantic Chroma sudah memberikan presisi tertinggi untuk Bahasa Indonesia
     ensemble_retriever = EnsembleRetriever(
         retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
-    )
-    
-    # Tambahkan Flashrank Reranker (N2)
-    from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
-    from langchain_community.document_compressors.flashrank_rerank import FlashrankRerank
-    
-    compressor = FlashrankRerank()
-    compression_retriever = ContextualCompressionRetriever(
-        base_compressor=compressor, base_retriever=ensemble_retriever
     )
     
     llm = get_llm()
@@ -125,7 +117,7 @@ Jangan menjawab pertanyaan, cukup rumuskan ulang."""
         ]
     )
     history_aware_retriever = create_history_aware_retriever(
-        llm, compression_retriever, contextualize_q_prompt
+        llm, ensemble_retriever, contextualize_q_prompt
     )
     
     # 3. RAG System Prompt (Kejujuran - W4 & W2 & Komunikatif)

@@ -168,7 +168,7 @@ with chat_col:
                                 for d in context_docs
                             ]
                             with st.expander("🔍 Lihat Referensi Dokumen Asli"):
-                                st.markdown("*Konteks di bawah ini ditarik secara otomatis oleh sistem pencarian (Vector + BM25) lalu diurutkan ulang oleh AI Reranker (Flashrank).*")
+                                st.markdown("*Konteks di bawah ini ditarik secara otomatis oleh sistem pencarian Super-Hybrid (Vector ChromaDB + BM25).*")
                                 for i, doc in enumerate(context_docs):
                                     hal = doc.metadata.get("page", "Tidak diketahui")
                                     st.markdown(f"**Referensi {i+1} (Halaman {hal})**")

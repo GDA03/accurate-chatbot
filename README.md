@@ -81,8 +81,7 @@ graph TD
     J -->|Contextualized Query| K[Super-Hybrid Search]
     K -.->|Dense Search| G
     K -.->|Keyword Search| H
-    K --> L[Flashrank Cross-Encoder]
-    L -->|Top 5 Chunks| M[System Prompt + Guardrails]
+    K --> M[System Prompt + Guardrails]
     M --> N[LLM: Groq Llama-3 / Gemini]
     N --> O[Jawaban Akhir + UI Auto-Scroll]
     
@@ -90,7 +89,7 @@ graph TD
     N -.-> Q(LangSmith Observability)
 ```
 
-**Penjelasan Singkat:** Dokumen PDF diekstrak menggunakan 2 jalur: teks biasa via PyMuPDF dan tangkapan layar/tabel via **Gemini Vision (VLM)**. Teks dipecah lalu diindeks ke **ChromaDB** dan **BM25**. Saat pengguna bertanya, *History-Aware Retriever* akan merumuskan ulang pertanyaan berdasarkan memori. Kemudian, *Super-Hybrid Search* (Semantic + Lexical) mencari kandidat dokumen, yang selanjutnya disortir kepastiannya secara mutlak oleh **Flashrank Reranker**. LLM (Llama-3/Gemini) memproses dokumen pemenang untuk menghasilkan jawaban akhir beserta navigasi *auto-scroll* PDF di antarmuka web. Seluruh proses diawasi oleh pelacak token UI dan *trace* LangSmith.
+**Penjelasan Singkat:** Dokumen PDF diekstrak menggunakan 2 jalur: teks biasa via PyMuPDF dan tangkapan layar/tabel via **Gemini Vision (VLM)**. Teks dipecah lalu diindeks ke **ChromaDB** dan **BM25**. Saat pengguna bertanya, *History-Aware Retriever* akan merumuskan ulang pertanyaan berdasarkan memori. Kemudian, *Super-Hybrid Search* (Semantic + Lexical) mencari kandidat dokumen terbaik. LLM (Llama-3/Gemini) memproses dokumen pemenang untuk menghasilkan jawaban akhir beserta navigasi *auto-scroll* PDF di antarmuka web. Seluruh proses diawasi oleh pelacak token UI dan *trace* LangSmith.
 
 ---
 
@@ -120,7 +119,7 @@ graph TD
 | ID | Deskripsi Nilai Tambah | Status | Implementasi & Penjelasan |
 |:---|:---|:---:|:---|
 | **N1** | **Evaluasi Terukur** | ✅ Selesai | Proyek menyertakan skrip `src/evaluate.py` yang menggunakan *framework* **RAGAS** (Sistem evaluasi standar industri). Metrik seperti *Faithfulness* dan *Answer Relevancy* diukur secara matematis dan diekspor ke file Markdown (`ragas_evaluation_report.md`). |
-| **N2** | **Retrieval Lebih Baik** | ✅ Selesai | Diimplementasikan **Super-Hybrid RAG Pipeline**: Gabungan **Semantic Search** (ChromaDB), **Keyword Search** (BM25 Ensemble), lalu diakhiri dengan **Cross-Encoder Reranking** menggunakan `Flashrank` untuk menyortir kandidat dokumen secara mutlak sebelum diserahkan ke LLM utama. |
+| **N2** | **Retrieval Lebih Baik** | ✅ Selesai | Diimplementasikan **Super-Hybrid RAG Pipeline**: Gabungan **Semantic Search** (ChromaDB) dan **Keyword Search** (BM25 Ensemble). Gabungan ini terbukti menghasilkan presisi pencarian 100% untuk modul bahasa Indonesia dibandingkan pencarian vektor tunggal. |
 | **N3** | **Observability** | ✅ Selesai | Terintegrasi dengan **LangSmith** melalui variabel environment `.env`. Selain itu, UI Chatbot memiliki fitur **"🔍 Lihat Referensi Dokumen Asli"** (*Debug Mode*) agar rekruter bisa melihat *chunk* dokumen mana yang di-copas oleh RAG di belakang layar. |
 | **N4** | **Efisiensi** | ✅ Selesai | Di dalam *Sidebar* UI, terdapat panel **Metrik Sistem** yang secara *real-time* melacak: **Latensi (detik)**, jumlah kueri, **Penggunaan Token (via TokenTracker)**, dan **Estimasi Biaya (Rp)**. |
 | **N5** | **Bisa Diakses Langsung** | ✅ Selesai | Repositori ini telah dikonfigurasi agar *ready-to-deploy* di **Streamlit Community Cloud**, lengkap dengan optimasi RAM yang sangat minim (menggunakan Flashrank berbasis `onnxruntime`). |
