@@ -68,23 +68,29 @@ Prototipe ini dirancang untuk meraih semua **Kebutuhan Wajib (W1-W6)** dan mengi
 ### Diagram Alur
 ```mermaid
 graph TD
-    A[Modul PDF] -->|pdfplumber| B(Teks Mentah)
-    B -->|RecursiveCharacterTextSplitter| C(Chunks 800 chars)
-    C -->|Gemini Embeddings| D[(ChromaDB Vector Store)]
+    A[Modul PDF] --> B{Ekstraksi Hibrida}
+    B -->|Teks Standar| C(PyMuPDF / pdfplumber)
+    B -->|Gambar UI & Tabel| D(Gemini Vision VLM)
+    C --> E[RecursiveCharacterTextSplitter]
+    D --> E
+    E -->|Chunks 800 chars| F[Gemini Embeddings]
+    F --> G[(ChromaDB Vector Store)]
+    E --> H[(BM25 Sparse Corpus)]
     
-    E[User Query] --> F{Memory Chain}
-    F -->|Contextualized Query| G[Hybrid Retriever]
-    G -.->|Dense Search| D
-    G -.->|Sparse Search| H(BM25 Index)
-    G --> I[Reranker]
-    I --> J[Prompting Guardrails]
-    J --> K[LLM: Gemini / Groq Fallback]
-    K --> L[Jawaban Akhir + Sitasi]
+    I[User Query] --> J{History-Aware Retriever}
+    J -->|Contextualized Query| K[Super-Hybrid Search]
+    K -.->|Dense Search| G
+    K -.->|Keyword Search| H
+    K --> L[Flashrank Cross-Encoder]
+    L -->|Top 5 Chunks| M[System Prompt + Guardrails]
+    M --> N[LLM: Groq Llama-3 / Gemini]
+    N --> O[Jawaban Akhir + UI Auto-Scroll]
     
-    K -.->|Tracing & Metrik| M(LangSmith)
+    N -.-> P(Token & Cost Tracker)
+    N -.-> Q(LangSmith Observability)
 ```
 
-**Penjelasan Singkat:** Dokumen PDF dibaca dan dipecah, lalu diindeks ke dalam basis data vektor lokal (ChromaDB) dan BM25 corpus. Saat pengguna bertanya, RAG Pipeline menggunakan *Hybrid Search* (gabungan vektor semantik dan *keyword* leksikal) untuk menemukan konteks paling relevan. Jika ada riwayat percakapan, sistem akan merumuskan ulang pertanyaan (Contextualizing Question) sebelum pencarian. Terakhir, Gemini menghasilkan jawaban murni berdasarkan konteks beserta rujukan halamannya.
+**Penjelasan Singkat:** Dokumen PDF diekstrak menggunakan 2 jalur: teks biasa via PyMuPDF dan tangkapan layar/tabel via **Gemini Vision (VLM)**. Teks dipecah lalu diindeks ke **ChromaDB** dan **BM25**. Saat pengguna bertanya, *History-Aware Retriever* akan merumuskan ulang pertanyaan berdasarkan memori. Kemudian, *Super-Hybrid Search* (Semantic + Lexical) mencari kandidat dokumen, yang selanjutnya disortir kepastiannya secara mutlak oleh **Flashrank Reranker**. LLM (Llama-3/Gemini) memproses dokumen pemenang untuk menghasilkan jawaban akhir beserta navigasi *auto-scroll* PDF di antarmuka web. Seluruh proses diawasi oleh pelacak token UI dan *trace* LangSmith.
 
 ---
 
