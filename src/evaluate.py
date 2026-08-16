@@ -8,8 +8,15 @@ from ragas.metrics import (
     context_precision,
     context_recall
 )
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from datasets import Dataset
-from rag_pipeline import setup_rag_chain
+from src.rag_pipeline import setup_rag_chain
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_groq import ChatGroq
+from ragas.run_config import RunConfig
 
 load_dotenv()
 
@@ -71,9 +78,15 @@ def main():
     
     dataset = Dataset.from_dict(data)
     
-    print("\nMenjalankan Evaluasi RAGAS (ini mungkin memakan waktu)...")
+    print("\nMenyiapkan model Evaluator Ragas...")
+    # Menggunakan ChatGroq (Llama-3.3 70B) yang sangat superior untuk Ragas
+    eval_llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.2, max_retries=20)
+    # Embedding tetap menggunakan Gemini (limit embedding jauh lebih longgar)
+    eval_embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
     
-    # Menjalankan evaluasi menggunakan metrik Ragas standar
+    print("\nMenjalankan Evaluasi RAGAS (ini mungkin memakan waktu beberapa menit)...")
+    
+    # Menjalankan evaluasi menggunakan metrik Ragas standar dengan Gemini
     result = evaluate(
         dataset,
         metrics=[
@@ -82,15 +95,46 @@ def main():
             faithfulness,
             answer_relevancy,
         ],
+        llm=eval_llm,
+        embeddings=eval_embeddings,
+        run_config=RunConfig(timeout=1200, max_workers=2, max_retries=20)
     )
     
     print("\n=== HASIL EVALUASI RAGAS ===")
     print(result)
     
-    # Export ke CSV untuk laporan
+    # Export ke Markdown untuk laporan yang lebih mudah dibaca
     df = result.to_pandas()
-    df.to_csv("../ragas_evaluation_report.csv", index=False)
-    print("\nLaporan detail telah disimpan ke 'ragas_evaluation_report.csv'")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    report_path = os.path.join(base_dir, "ragas_evaluation_report.md")
+    
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write("# 📊 Laporan Evaluasi Ragas\n\n")
+        f.write("Berikut adalah hasil pengujian akurasi Chatbot Accurate Online menggunakan **LLM-as-a-Judge (Gemini)**.\n\n")
+        
+        f.write("## 📈 Ringkasan Skor Metrik\n")
+        for metric_name, score in result.items():
+            f.write(f"- **{metric_name.replace('_', ' ').title()}**: {score:.4f}\n")
+            
+        f.write("\n---\n\n## 📝 Detail Pengujian per Pertanyaan\n\n")
+        for index, row in df.iterrows():
+            f.write(f"### Pertanyaan {index + 1}\n")
+            f.write(f"**Q:** {row['question']}\n\n")
+            f.write(f"**Kunci Jawaban (Ideal):**\n> {row['ground_truth']}\n\n")
+            f.write(f"**Jawaban RAG Chatbot:**\n> {row['answer']}\n\n")
+            
+            f.write("**Skor Metrik Individual:**\n")
+            if 'context_precision' in row and pd.notna(row['context_precision']):
+                f.write(f"- Context Precision: {row['context_precision']:.4f}\n")
+            if 'context_recall' in row and pd.notna(row['context_recall']):
+                f.write(f"- Context Recall: {row['context_recall']:.4f}\n")
+            if 'faithfulness' in row and pd.notna(row['faithfulness']):
+                f.write(f"- Faithfulness: {row['faithfulness']:.4f}\n")
+            if 'answer_relevancy' in row and pd.notna(row['answer_relevancy']):
+                f.write(f"- Answer Relevancy: {row['answer_relevancy']:.4f}\n")
+            f.write("\n---\n\n")
+            
+    print(f"\nLaporan Markdown yang rapi telah disimpan ke '{report_path}'")
 
 if __name__ == "__main__":
     main()

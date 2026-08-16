@@ -7,6 +7,8 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain, create_history_aware_retriever
 from rank_bm25 import BM25Okapi
 import numpy as np
+from typing import List, Dict, Any
+from langchain.schema import Document
 
 # Load Env
 from dotenv import load_dotenv
@@ -20,7 +22,11 @@ DATA_PATH = os.path.join(BASE_DIR, "data", "MODUL PEMBELAJARAN.pdf")
 # 1. HYBRID RETRIEVER (N2)
 # ==========================================
 class HybridRetriever:
-    def __init__(self, vectorstore, documents):
+    """
+    Kustomisasi Retriever yang menggabungkan Semantic Search (Dense/Chroma) 
+    dan Keyword Search (Sparse/BM25) untuk akurasi maksimal.
+    """
+    def __init__(self, vectorstore: Any, documents: List[Document]):
         self.vectorstore = vectorstore
         self.documents = documents
         
@@ -28,7 +34,8 @@ class HybridRetriever:
         tokenized_corpus = [doc.page_content.split(" ") for doc in self.documents]
         self.bm25 = BM25Okapi(tokenized_corpus)
         
-    def get_relevant_documents(self, query, top_k=5):
+    def get_relevant_documents(self, query: str, top_k: int = 5) -> List[Document]:
+        """Menggabungkan hasil Dense dan Sparse lalu menghilangkan duplikat."""
         # 1. Vector Search (Dense)
         dense_docs = self.vectorstore.similarity_search_with_score(query, k=top_k)
         
@@ -54,29 +61,32 @@ class HybridRetriever:
 # ==========================================
 # 2. SETUP RAG PIPELINE
 # ==========================================
-def get_llm():
-    """Menggunakan Groq (Llama-3 70B) sebagai LLM utama karena lebih stabil dan cepat."""
+def get_llm() -> Any:
+    """Menggunakan Groq (Llama-3.1 8B) sebagai LLM utama karena lebih stabil dan cepat."""
     try:
         # Menggunakan Llama-3.3 70B via Groq untuk kualitas setara GPT-4
-        llm = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.2)
-        return llm
-    except Exception as e:
-        print(f"Gagal memuat Groq: {e}")
-        # Fallback ke Gemini Flash jika Groq bermasalah
-        llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0.2)
-        return llm
+        return ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.2)
+    except Exception:
+        # Fallback ke Gemini jika Groq gagal/tidak ada API key
+        return ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
 
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 
-def setup_rag_chain():
+def setup_rag_chain() -> Any:
+    """
+    Menginisialisasi seluruh rantai RAG (Retrieval-Augmented Generation).
+    Proses ini mencakup:
+    1. Memuat ChromaDB dan menyiapkan Ensemble Hybrid Retriever.
+    2. Membuat History-Aware Retriever untuk mempertahankan konteks chat.
+    3. Merangkai sistem Prompt dengan Guardrail super ketat.
+    """
     # 1. Load Vector Store (Dense Search)
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
     vectorstore = Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
     
     # Ambil semua dokumen dari Chroma untuk BM25
     all_data = vectorstore.get()
-    from langchain.schema import Document
     all_docs = [Document(page_content=txt, metadata=meta) for txt, meta in zip(all_data['documents'], all_data['metadatas'])]
     
     # Setup BM25 (Sparse Search)
@@ -89,6 +99,15 @@ def setup_rag_chain():
     # Gabungkan Keduanya (Hybrid Search N2)
     ensemble_retriever = EnsembleRetriever(
         retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
+    )
+    
+    # Tambahkan Flashrank Reranker (N2)
+    from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
+    from langchain_community.document_compressors.flashrank_rerank import FlashrankRerank
+    
+    compressor = FlashrankRerank()
+    compression_retriever = ContextualCompressionRetriever(
+        base_compressor=compressor, base_retriever=ensemble_retriever
     )
     
     llm = get_llm()
@@ -106,22 +125,25 @@ Jangan menjawab pertanyaan, cukup rumuskan ulang."""
         ]
     )
     history_aware_retriever = create_history_aware_retriever(
-        llm, ensemble_retriever, contextualize_q_prompt
+        llm, compression_retriever, contextualize_q_prompt
     )
     
-    # 3. RAG System Prompt (Kejujuran - W4 & W2)
-    qa_system_prompt = """Anda adalah asisten AI untuk software Accurate Online.
-Tugas Anda adalah menjawab pertanyaan user HANYA berdasarkan informasi dari KONTEKS di bawah ini.
+    # 3. RAG System Prompt (Kejujuran - W4 & W2 & Komunikatif)
+    qa_system_prompt = """Anda adalah asisten AI yang ramah, komunikatif, dan interaktif khusus untuk software Accurate Online.
+Tugas Anda adalah memandu pengguna dan menjawab pertanyaan HANYA berdasarkan informasi dari KONTEKS di bawah ini.
 
 KONTEKS:
 {context}
 
 ATURAN SANGAT KETAT:
-1. Jawablah pertanyaan HANYA berdasarkan langkah-langkah atau informasi yang tertulis di KONTEKS. Jika konteks hanya menyebutkan 2 langkah, maka sebutkan 2 langkah itu saja. Jangan menambahkannya sendiri.
-2. JANGAN PERNAH menambahkan informasi dari luar konteks, meskipun Anda tahu jawabannya (seperti tombol Sign Up, dll). Dilarang keras berhalusinasi.
-3. Jika informasi untuk menjawab pertanyaan SAMA SEKALI TIDAK ADA di dalam KONTEKS, Anda WAJIB menjawab persis seperti ini:
-"Maaf, informasi tersebut tidak tersedia di dalam Modul Pembelajaran."
-4. Jika Anda menemukan jawabannya, Anda harus mengutip Halaman dari teks konteks di akhir jawaban Anda (contoh: [Sumber: Halaman 2])."""
+1. PENOLAKAN TOPIK DI LUAR DOMAIN (HARD GUARDRAIL): Jika pengguna menanyakan topik yang SAMA SEKALI TIDAK RELEVAN dengan Accurate Online, Akuntansi, atau sistem bisnis (contoh: pertanyaan tentang politik, tokoh seperti Prabowo, bahasa pemrograman seperti Javascript, resep masakan, dll), Anda WAJIB langsung menolak menjawab. Katakan dengan sopan bahwa Anda adalah asisten khusus Accurate Online dan tidak diprogram untuk menjawab topik tersebut. JANGAN PERNAH menggunakan pengetahuan umum Anda untuk menjawabnya.
+2. JAWAB HANYA DARI KONTEKS: Untuk pertanyaan seputar Accurate Online/Akuntansi, jawablah HANYA berdasarkan informasi atau langkah-langkah yang tertulis di KONTEKS. Jangan menambahkannya sendiri.
+3. JANGAN BERHALUSINASI: Dilarang keras mengarang jawaban atau mengambil informasi dari internet (seperti harga, fitur yang tidak tertulis, dll).
+4. KOMUNIKATIF SAAT KONTEKS TIDAK MENJAWAB: Jika pertanyaan masih berkaitan dengan Accurate Online namun informasi persisnya TIDAK ADA di dalam KONTEKS, JANGAN mengarang jawaban.
+   Sebagai gantinya:
+   - Sampaikan dengan sopan dan natural bahwa informasi yang dicari tidak ditemukan di modul pembelajaran.
+   - Ajukan pertanyaan klarifikasi atau tawarkan bantuan terkait topik terdekat yang relevan untuk memastikan maksud pengguna.
+5. KUTIPAN HALAMAN: Jika Anda memberikan jawaban berdasarkan konteks, Anda WAJIB mengutip referensi Halaman di akhir jawaban Anda (contoh: [Sumber: Halaman 2])."""
     
     qa_prompt = ChatPromptTemplate.from_messages(
         [
@@ -131,7 +153,20 @@ ATURAN SANGAT KETAT:
         ]
     )
     
-    question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+    from langchain_core.prompts import PromptTemplate
+    
+    # KUNCI UTAMA PERBAIKAN: Format ulang dokumen agar LLM melihat nomor halamannya secara eksplisit!
+    # Secara default, LangChain hanya mengirimkan 'page_content' saja tanpa metadata.
+    document_prompt = PromptTemplate.from_template(
+        "[Sumber Asli: Halaman {page}]\n{page_content}"
+    )
+    
+    question_answer_chain = create_stuff_documents_chain(
+        llm, 
+        qa_prompt, 
+        document_prompt=document_prompt
+    )
+    
     rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
     
     return rag_chain

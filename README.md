@@ -91,12 +91,24 @@ graph TD
 *   **LLM & Embeddings**: Menggunakan **Google Gemini Pro** dan `models/embedding-001` via `langchain-google-genai` karena sangat handal untuk Bahasa Indonesia, memilik *context window* yang besar, dan memiliki *tier* gratis. Sebagai cadangan, jika Gemini terkena *rate limit*, sistem akan melakukan _fallback_ ke **Groq (Llama-3)** yang sangat ringan dan cepat.
 *   **Strategi Chunking**: `RecursiveCharacterTextSplitter` dengan `chunk_size=800` dan `chunk_overlap=200`. Ukuran 800 cukup untuk memuat 2-3 paragraf utuh yang kontekstual, sedangkan *overlap* 200 karakter mencegah terpotongnya informasi teknis atau prosedur di tengah kalimat.
 *   **Mekanisme Memori**: Tidak menggunakan *window buffer* biasa, melainkan pola `create_history_aware_retriever`. Pola ini mengirimkan riwayat percakapan + pertanyaan baru ke LLM untuk menghasilkan satu kueri *standalone*. Ini sangat efektif untuk pertanyaan lanjutan seperti *"bagaimana dengan yang kedua tadi?"*.
+*   **Zero-Lag UI Architecture**: Karena Streamlit secara bawaan melakukan *full-page refresh* pada setiap interaksi, arsitektur antarmuka PDF dioptimasi menggunakan **Streamlit Fragments (`@st.fragment`)** dipadukan dengan **PyMuPDF (`fitz`)**. Gambar PDF dirender dalam memori dengan `@st.cache_data` beresolusi 100 DPI agar transisi pergantian halaman instan dan tidak membuat *layout chat* berkedip (*SPA-like experience*). Selain itu, tata letak dan kotak elemen dibuat presisi tinggi menggunakan kustomisasi CSS agar menghilangkan `scrollbar` bawaan Streamlit.
 
 ---
 
-## 4. Keterbatasan & Rencana Perbaikan
-*   **OCR Tangkapan Layar (N6)**: Prototipe saat ini mengandalkan kemampuan `pdfplumber` yang terbatas pada teks yang dapat diblok. *Tangkapan layar berisi teks tidak terindeks*. **Perbaikan ke depan**: Mengirim gambar halaman secara langsung ke **Gemini Vision API** saat proses *ingestion* untuk melakukan transkripsi (OCR) penuh dari seluruh tabel dan tangkapan layar antarmuka Accurate Online.
-*   **Reranker**: Saat ini *reranker* Hybrid Search digabungkan secara manual (naive frequency). **Perbaikan ke depan**: Menggunakan model *Cross-Encoder* sungguhan seperti `bge-reranker` jika *resource* server/lokal memadai.
+## 4. Pencapaian Tambahan (N1 - N6)
+*   **Zero-Lag UI & SPA-Like Experience (N3/N4)**: Menggunakan manipulasi *Streamlit Fragment* dan rendering *PyMuPDF* berkecepatan tinggi agar UI PDF dan Chat dapat sinkron secara *real-time* tanpa membuat web *refresh* berkedip.
+*   **Multimodal VLM OCR Ingestion (N6)**: Sistem telah mengimplementasikan *Visual Language Model* (Gemini Vision) di `ingest_vlm.py` untuk mendeteksi *screenshot* UI aplikasi dan mengekstraksi teks di dalamnya secara mandiri sehingga LLM mengetahui lokasi tombol-tombol pada antarmuka *software*.
+*   **Automated Evaluation dengan Ragas (N1)**: Skrip `evaluate.py` telah disediakan untuk menguji RAG secara kuantitatif (*Faithfulness* dan *Answer Relevancy*) atas serangkaian pertanyaan teknis, menggunakan LLM-as-a-Judge.
+*   **Hybrid RAG Retriever (N2)**: Penggabungan Semantic Search (Chroma) dan Lexical Search (BM25) menghasilkan presisi pencarian yang sangat tinggi.
+
+---
+
+## 5. Cara Menjalankan Automated Evaluation (Ragas)
+Selain mencoba langsung di UI, Anda juga bisa menjalankan uji coba terotomatisasi via skrip:
+```bash
+python src/evaluate.py
+```
+*Skrip ini akan mencetak skor performa (Precision, Recall, Faithfulness) dalam format terminal, dan menyimpannya ke format CSV. Pastikan API key Google Anda masih memiliki sisa kuota sebelum menjalankan ini.*
 
 ---
 

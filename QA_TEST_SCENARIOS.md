@@ -23,7 +23,7 @@ Dokumen ini berisi daftar pertanyaan terstruktur untuk melakukan demonstrasi dan
 - **Pertanyaan 3:** "Apa perbedaan fitur antara Accurate Online dengan Accurate 5 Desktop?"
 - **Pertanyaan 4:** "Apa aja produk mereka?"
 
-**Ekspektasi Output:** Chatbot **wajib** merespons dengan: *"Maaf, informasi tersebut tidak tersedia di dalam Modul Pembelajaran."* (atau kalimat penolakan sejenis).
+**Ekspektasi Output:** Chatbot tidak boleh memberikan jawaban halusinasi atau informasi karangan sendiri. Chatbot harus menyampaikan bahwa informasi tersebut tidak ada di modul, lalu secara **komunikatif** bertanya kembali kepada pengguna untuk memperjelas maksud atau menawarkan bantuan terkait Accurate Online. (Contoh: *"Maaf, informasi mengenai harga/pendiri tidak terdapat dalam modul. Apakah Anda memiliki pertanyaan lain seputar penggunaan fitur Accurate Online?"*)
 
 ---
 
