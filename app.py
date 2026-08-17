@@ -269,9 +269,11 @@ def show_pdf_viewer(pdf_path):
     
     pdf_view_container = st.container(height=500)
     with pdf_view_container:
-        col1, col2, col3 = st.columns([1, 1, 1])
+        col1, col2, col3, col4 = st.columns([3, 2, 1, 3])
         with col2:
             st.number_input("Halaman", min_value=1, max_value=total_pages, key="current_page", step=1, label_visibility="collapsed")
+        with col3:
+            st.markdown(f"<div style='text-align: left; padding-top: 5px; font-weight: bold;'>/ {total_pages}</div>", unsafe_allow_html=True)
                 
         img_bytes = get_pdf_page_image(pdf_path, st.session_state.current_page)
         st.image(img_bytes, use_column_width=True)
