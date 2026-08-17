@@ -271,7 +271,7 @@ def show_pdf_viewer(pdf_path):
     with pdf_view_container:
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
-            st.number_input(f"Lompat ke Halaman (Total: {total_pages})", min_value=1, max_value=total_pages, key="current_page", step=1)
+            st.number_input("Halaman", min_value=1, max_value=total_pages, key="current_page", step=1, label_visibility="collapsed")
                 
         img_bytes = get_pdf_page_image(pdf_path, st.session_state.current_page)
         st.image(img_bytes, use_column_width=True)
