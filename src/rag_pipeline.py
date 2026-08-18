@@ -62,10 +62,10 @@ class HybridRetriever:
 # 2. SETUP RAG PIPELINE
 # ==========================================
 def get_llm() -> Any:
-    """Menggunakan Groq (Llama-3.1 8B) sebagai LLM utama karena lebih stabil dan cepat."""
+    """Menggunakan Groq sebagai LLM utama karena lebih stabil dan cepat."""
     try:
-        # Menggunakan Llama-3.3 70B via Groq untuk kualitas setara GPT-4
-        return ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.2)
+        # Menggunakan GPT OSS 120B via Groq untuk kualitas setara GPT-4
+        return ChatGroq(model_name="openai/gpt-oss-120b", temperature=0.2)
     except Exception:
         # Fallback ke Gemini jika Groq gagal/tidak ada API key
         return ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)

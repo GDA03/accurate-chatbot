@@ -79,8 +79,8 @@ def main():
     dataset = Dataset.from_dict(data)
     
     print("\nMenyiapkan model Evaluator Ragas...")
-    # Menggunakan ChatGroq (Llama-3.3 70B) yang sangat superior untuk Ragas
-    eval_llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.2, max_retries=20)
+    # Menggunakan GPT OSS 120B via Groq yang sangat superior untuk Ragas
+    eval_llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.2, max_retries=20)
     # Embedding tetap menggunakan Gemini (limit embedding jauh lebih longgar)
     eval_embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
     
